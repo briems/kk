@@ -1,0 +1,46 @@
+import os
+import re
+import hashlib
+
+# List of potentially harmful file extensions
+extensions = ['.exe', '.dll', '.vbs', '.js', '.ps1', '.bat', '.cmd', '.jar']
+
+# Regular expression pattern to match potentially harmful strings
+pattern = re.compile(r'(shell\W*execute|wscript\W*shell|powershell\W*|cmd\W*|java\W*)', re.IGNORECASE)
+
+# Hash algorithm to detect identical files
+hash_algo = hashlib.sha256()
+
+def scan_directory(path):
+    flagged_files = []
+    for root, dirs, files in os.walk(path):
+        for filename in files:
+            file_path = os.path.join(root, filename)
+            if any(file_path.endswith(ext) for ext in extensions):
+                print('Potentially harmful file:', file_path)
+                with open(file_path, 'rb') as f:
+                    data = f.read()
+                    hash_algo.update(data)
+                file_hash = hash_algo.hexdigest()
+                print('File hash:', file_hash)
+                flagged_files.append((file_path, file_hash))
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+                if pattern.search(content):
+                    print('Potentially harmful string found in file:', file_path)
+                    flagged_files.append((file_path, None))
+
+    if flagged_files:
+        print('Scanning complete. The following files were flagged as potential threats:')
+        for file_path, file_hash in flagged_files:
+            if file_hash:
+                print(f'{file_path} ({file_hash})')
+            else:
+                print(file_path)
+    else:
+        print('Scanning complete. No potential threats were found.')
+
+if __name__ == '__main__':
+    path = input('Enter the path to scan: ')
+    scan_directory(path)
+
